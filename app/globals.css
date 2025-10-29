@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: #f3f4f6;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* React Flow custom styles */
+.react-flow__node {
+  border-radius: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.react-flow__node.selected {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+.react-flow__edge-path {
+  stroke-width: 3;
+  stroke: #3b82f6;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #1e40af;
+  stroke-width: 4;
+}
+
+/* Attack mode highlights */
+.react-flow__node.attack-source-candidate {
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+.react-flow__node.attack-target-candidate {
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+.react-flow__node.attack-source-selected {
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.8) !important;
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+}
+
+/* Packet animation trail */
+@keyframes packet-trail {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+.packet-trail {
+  animation: packet-trail 0.5s ease-out forwards;
+}
+
+/* GPON optical fiber glow */
+.optical-fiber {
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.6));
+}
+
+/* Cisco PT style buttons */
+.cisco-btn {
+  @apply px-3 py-1.5 rounded text-sm font-medium transition-all;
+  @apply bg-gray-200 hover:bg-gray-300 text-gray-800;
+  @apply border border-gray-400 shadow-sm;
+}
+
+.cisco-btn:active {
+  @apply shadow-inner;
+}
+
+.cisco-btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white border-blue-700;
+}
+
+.cisco-btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white border-red-700;
+}
