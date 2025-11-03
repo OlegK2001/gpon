@@ -1,115 +1,166 @@
 'use client'
 
-import { useState } from 'react'
-import { Server, Radio, Split, Router, Monitor, HardDrive, Network, ChevronDown } from 'lucide-react'
-import { DeviceType } from '@/types/network'
+import { useNetworkStore } from '@/store/networkStore'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Activity, Cpu, HardDrive, AlertTriangle, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
-interface DeviceCategory {
-  name: string
-  devices: { type: DeviceType; icon: any; label: string; description: string; color: string }[]
-}
+export function DevicePanel() {
+  const { selectedDeviceId, devices, removeDevice, selectDevice } = useNetworkStore()
 
-const deviceCategories: DeviceCategory[] = [
-  {
-    name: 'GPON Devices',
-    devices: [
-      { type: 'OLT', icon: Server, label: 'OLT', description: 'Optical Line Terminal', color: 'bg-red-500' },
-      { type: 'ONU', icon: Radio, label: 'ONU', description: 'Optical Network Unit', color: 'bg-blue-500' },
-      { type: 'ONT', icon: Radio, label: 'ONT', description: 'Optical Network Terminal', color: 'bg-cyan-500' },
-      { type: 'SPLITTER', icon: Split, label: 'Splitter', description: 'Optical Splitter', color: 'bg-yellow-500' },
-    ]
-  },
-  {
-    name: 'Network Devices',
-    devices: [
-      { type: 'ROUTER', icon: Router, label: 'Router', description: 'Network Router', color: 'bg-purple-500' },
-      { type: 'SWITCH', icon: Network, label: 'Switch', description: 'Network Switch', color: 'bg-green-500' },
-    ]
-  },
-  {
-    name: 'End Devices',
-    devices: [
-      { type: 'PC', icon: Monitor, label: 'PC', description: 'Personal Computer', color: 'bg-pink-500' },
-      { type: 'SERVER', icon: HardDrive, label: 'Server', description: 'Server', color: 'bg-orange-500' },
-    ]
-  }
-]
+  const device = devices.find((d) => d.id === selectedDeviceId)
 
-export default function DevicePanel() {
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['GPON Devices', 'Network Devices', 'End Devices'])
-  
-  const toggleCategory = (categoryName: string) => {
-    setExpandedCategories(prev => 
-      prev.includes(categoryName) 
-        ? prev.filter(c => c !== categoryName)
-        : [...prev, categoryName]
+  if (!device) {
+    return (
+      <div className="flex items-center justify-center h-full bg-card border-l border-border">
+        <p className="text-sm text-muted-foreground">Select a device to view details</p>
+      </div>
     )
   }
-  
-  const handleDragStart = (e: React.DragEvent, deviceType: DeviceType) => {
-    e.dataTransfer.setData('deviceType', deviceType)
-    e.dataTransfer.effectAllowed = 'copy'
+
+  const handleDelete = () => {
+    removeDevice(device.id)
+    selectDevice(null)
   }
-  
+
+  const getStatusColor = () => {
+    if (device.statusLevel !== undefined && device.statusLevel > 0) {
+      switch (device.statusLevel) {
+        case 1:
+          return 'bg-warning'
+        case 2:
+          return 'bg-status-attack'
+        case 3:
+          return 'bg-destructive'
+        default:
+          return 'bg-success'
+      }
+    }
+    
+    switch (device.status) {
+      case 'active':
+        return 'bg-success'
+      case 'error':
+        return 'bg-destructive'
+      default:
+        return 'bg-muted'
+    }
+  }
+
   return (
-    <div className="w-72 bg-gray-100 border-r-2 border-gray-300 overflow-y-auto">
-      <div className="p-3 bg-white border-b-2 border-gray-300">
-        <h2 className="text-sm font-bold text-gray-800 uppercase">Device Selection</h2>
+    <div className="flex flex-col h-full bg-card border-l border-border">
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold">Device Details</h3>
+          <Button onClick={handleDelete} variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </div>
+        <div className="flex items-center gap-2 mb-1">
+          <Badge variant="outline">{device.type}</Badge>
+          <div className={`w-2 h-2 rounded-full ${getStatusColor()}`} />
+        </div>
+        <p className="text-xs text-muted-foreground">{device.name}</p>
+        {device.serialNumber && (
+          <p className="text-xs text-muted-foreground">Serial: {device.serialNumber}</p>
+        )}
       </div>
-      
-      <div className="p-2">
-        {deviceCategories.map((category) => (
-          <div key={category.name} className="mb-2">
-            <button
-              onClick={() => toggleCategory(category.name)}
-              className="w-full flex items-center justify-between p-2 bg-white border border-gray-300 rounded hover:bg-gray-50"
-            >
-              <span className="text-sm font-semibold text-gray-700">{category.name}</span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${
-                expandedCategories.includes(category.name) ? 'rotate-180' : ''
-              }`} />
-            </button>
-            
-            {expandedCategories.includes(category.name) && (
-              <div className="mt-1 space-y-1 pl-2">
-                {category.devices.map((device) => {
-                  const Icon = device.icon
-                  return (
-                    <div
-                      key={device.type}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, device.type)}
-                      className="p-2 bg-white border border-gray-300 rounded cursor-move hover:border-blue-400 hover:shadow transition-all"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className={`p-1.5 ${device.color} rounded`}>
-                          <Icon className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-gray-800 truncate">{device.label}</div>
-                          <div className="text-xs text-gray-500 truncate">{device.description}</div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
+
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+        <Card className="p-3">
+          <h4 className="text-xs font-semibold mb-2 flex items-center gap-2">
+            <Activity className="w-3 h-3" />
+            Network Info
+          </h4>
+          <div className="space-y-1 text-xs">
+            {device.ipAddress && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">IP Address:</span>
+                <span className="font-mono">{device.ipAddress}</span>
+              </div>
+            )}
+            {device.macAddress && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">MAC Address:</span>
+                <span className="font-mono">{device.macAddress}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Status:</span>
+              <span className="capitalize">{device.status}</span>
+            </div>
+            {device.statusLevel !== undefined && device.statusLevel > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status Level:</span>
+                <span className={device.statusLevel === 3 ? 'text-destructive' : device.statusLevel === 2 ? 'text-status-attack' : 'text-warning'}>
+                  {device.statusLevel === 3 ? 'Critical' : device.statusLevel === 2 ? 'Moderate' : 'Warning'}
+                </span>
               </div>
             )}
           </div>
-        ))}
-      </div>
-      
-      <div className="p-3 mt-4 mx-2 bg-blue-50 border border-blue-200 rounded">
-        <h3 className="text-xs font-bold text-blue-900 mb-2">Quick Guide:</h3>
-        <ul className="text-xs text-blue-800 space-y-1">
-          <li>→ Drag devices onto canvas</li>
-          <li>→ Connect devices together</li>
-          <li>→ Click device to configure</li>
-          <li>→ Press Start to simulate</li>
-        </ul>
+        </Card>
+
+        {(device.type === 'OLT' || device.type === 'ONU' || device.type === 'ONT') && device.config.gponConfig && (
+          <Card className="p-3">
+            <h4 className="text-xs font-semibold mb-2">GPON Configuration</h4>
+            <div className="space-y-1 text-xs">
+              {device.config.gponConfig.onuId && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ONU ID:</span>
+                  <span className="font-mono">{device.config.gponConfig.onuId}</span>
+                </div>
+              )}
+              {device.config.gponConfig.allocId && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Alloc ID:</span>
+                  <span className="font-mono">{device.config.gponConfig.allocId}</span>
+                </div>
+              )}
+              {device.config.gponConfig.gemPort && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">GEM Port:</span>
+                  <span className="font-mono">{device.config.gponConfig.gemPort}</span>
+                </div>
+              )}
+              {device.config.gponConfig.wavelengthDown && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Downstream λ:</span>
+                  <span>{device.config.gponConfig.wavelengthDown} nm</span>
+                </div>
+              )}
+              {device.config.gponConfig.wavelengthUp && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Upstream λ:</span>
+                  <span>{device.config.gponConfig.wavelengthUp} nm</span>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        <Card className="p-3">
+          <h4 className="text-xs font-semibold mb-2 flex items-center gap-2">
+            <HardDrive className="w-3 h-3" />
+            Ports ({device.ports.length})
+          </h4>
+          <div className="space-y-2">
+            {device.ports.map((port) => (
+              <div key={port.id} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${port.status === 'up' ? 'bg-success' : 'bg-muted'}`} />
+                  <span>Port {port.number}</span>
+                  <Badge variant="outline" className="text-[10px] px-1">
+                    {port.type}
+                  </Badge>
+                </div>
+                {port.speed && <span className="text-muted-foreground">{port.speed}</span>}
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </div>
   )
 }
-
-

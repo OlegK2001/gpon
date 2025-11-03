@@ -1,5 +1,5 @@
 // Network Device Types
-export type DeviceType = 'OLT' | 'ONU' | 'ONT' | 'SPLITTER' | 'ROUTER' | 'SWITCH' | 'PC' | 'SERVER'
+export type DeviceType = 'OLT' | 'ONU' | 'ONT' | 'SPLITTER' | 'ROUTER' | 'SWITCH' | 'PC' | 'SERVER' | 'ATTACKER'
 
 export interface Position {
   x: number
@@ -16,6 +16,8 @@ export interface NetworkDevice {
   ports: Port[]
   config: DeviceConfig
   status: 'active' | 'inactive' | 'error'
+  statusLevel?: number // 0 = normal, 1 = yellow (warning), 2 = orange (moderate), 3 = red (critical)
+  serialNumber?: string
 }
 
 export interface Port {

@@ -18,11 +18,29 @@ const attackTypes: { type: AttackType; name: string; description: string; severi
 ]
 
 export default function SecurityPanel() {
-  const { devices, simulation, launchAttack, stopAttack, setAttackMode, attackMode } = useNetworkStore()
+  const { devices, simulation, launchAttack, stopAttack, setAttackMode, attackMode, addLog } = useNetworkStore()
   const [selectedAttackType, setSelectedAttackType] = useState<AttackType>('dos')
-  const [hoveredDevice, setHoveredDevice] = useState<string | null>(null)
   
   const selectedAttack = attackTypes.find(a => a.type === selectedAttackType)
+  
+  const handleEnterAttackMode = () => {
+    setAttackMode({
+      type: selectedAttackType,
+      step: 'select_source'
+    })
+    addLog({
+      level: 'warning',
+      message: `Entering attack mode: ${selectedAttack?.name}. Click on a device to select attack source.`
+    })
+  }
+  
+  const handleExitAttackMode = () => {
+    setAttackMode(null)
+    addLog({
+      level: 'info',
+      message: 'Attack mode cancelled'
+    })
+  }
   
   const handleLaunchAttack = (sourceId: string, targetId: string) => {
     if (!selectedAttack) return
@@ -97,22 +115,23 @@ export default function SecurityPanel() {
         </div>
         
         {/* Attack Mode Instructions */}
-        {selectedAttack && (
-          <div className="bg-gradient-to-r from-red-900 to-red-800 rounded-lg p-4 border border-red-700">
+        {selectedAttack && !attackMode && (
+          <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-lg p-4 border border-blue-700">
             <div className="flex items-start space-x-3">
               <AlertTriangle className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-1" />
               <div className="flex-1">
                 <h4 className="text-white font-semibold mb-2">How to Launch Attack:</h4>
                 <ol className="text-sm text-gray-200 space-y-1 list-decimal list-inside">
-                  <li>Attack type selected: <strong>{selectedAttack.name}</strong></li>
-                  <li>Click on a device in the canvas to use as attack source</li>
-                  <li>Available targets will be highlighted in red</li>
-                  <li>Hover over a highlighted device to see attack path</li>
-                  <li>Click on the target device to launch the attack</li>
+                  <li>Selected: <strong>{selectedAttack.name}</strong></li>
+                  <li>Click "Enter Attack Mode" button below</li>
+                  <li>All devices will glow <span className="text-green-400">GREEN 🟢</span></li>
+                  <li>Click on a device to select as attack source</li>
+                  <li>Other devices will glow <span className="text-red-400">RED 🔴</span></li>
+                  <li>Click on target device to launch attack</li>
                 </ol>
                 <button
-                  onClick={() => setAttackMode({ type: selectedAttackType, step: 'select_source' })}
-                  className="mt-3 w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                  onClick={handleEnterAttackMode}
+                  className="mt-3 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center space-x-2 transition-colors font-semibold"
                 >
                   <Play className="w-4 h-4" />
                   <span>Enter Attack Mode</span>
@@ -124,23 +143,51 @@ export default function SecurityPanel() {
         
         {/* Attack Mode Status */}
         {attackMode && (
-          <div className="bg-yellow-900 rounded-lg p-4 border border-yellow-700">
-            <div className="flex items-center justify-between mb-2">
+          <div className="bg-yellow-900 rounded-lg p-4 border-2 border-yellow-500 animate-pulse">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
-                <span className="text-white font-semibold">Attack Mode Active</span>
+                <div className="w-3 h-3 bg-yellow-400 rounded-full animate-ping" />
+                <span className="text-white font-bold text-lg">⚠️ Attack Mode Active</span>
               </div>
               <button
-                onClick={() => setAttackMode(null)}
-                className="p-1 hover:bg-yellow-800 rounded"
+                onClick={handleExitAttackMode}
+                className="p-1.5 hover:bg-yellow-800 rounded bg-yellow-700"
+                title="Exit Attack Mode"
               >
-                <X className="w-4 h-4 text-white" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
-            <p className="text-sm text-yellow-200">
-              {attackMode.step === 'select_source' && 'Click on a device to use as attack source'}
-              {attackMode.step === 'select_target' && `Source selected. Now click on a target device (highlighted in red)`}
-            </p>
+            <div className="space-y-2">
+              {attackMode.step === 'select_source' && (
+                <div className="bg-yellow-800 p-3 rounded">
+                  <p className="text-sm text-yellow-100 font-semibold mb-1">
+                    STEP 1: Select Attack Source
+                  </p>
+                  <p className="text-xs text-yellow-200">
+                    👉 All devices should be glowing <span className="text-green-400 font-bold">GREEN 🟢</span>
+                  </p>
+                  <p className="text-xs text-yellow-200">
+                    👉 Click on any device to use as attack source
+                  </p>
+                </div>
+              )}
+              {attackMode.step === 'select_target' && attackMode.sourceDeviceId && (
+                <div className="bg-yellow-800 p-3 rounded">
+                  <p className="text-sm text-yellow-100 font-semibold mb-1">
+                    STEP 2: Select Attack Target
+                  </p>
+                  <p className="text-xs text-yellow-200 mb-1">
+                    ✓ Source: <span className="font-bold">{devices.find(d => d.id === attackMode.sourceDeviceId)?.name}</span>
+                  </p>
+                  <p className="text-xs text-yellow-200">
+                    👉 Other devices should be glowing <span className="text-red-400 font-bold">RED 🔴</span>
+                  </p>
+                  <p className="text-xs text-yellow-200">
+                    👉 Click on target device to launch attack
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
         

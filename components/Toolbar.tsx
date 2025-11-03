@@ -1,10 +1,10 @@
 'use client'
 
-import { Play, Pause, RotateCcw, Save, FolderOpen, Network, FastForward, Rewind } from 'lucide-react'
+import { Play, Pause, RotateCcw, Save, FolderOpen, Network, FastForward, Rewind, Link } from 'lucide-react'
 import { useNetworkStore } from '@/store/networkStore'
 
 export default function Toolbar() {
-  const { simulation, startSimulation, stopSimulation, clearLogs, setSimulationSpeed } = useNetworkStore()
+  const { simulation, startSimulation, stopSimulation, clearLogs, setSimulationSpeed, connectionMode, setConnectionMode, saveProject, loadProject } = useNetworkStore()
   
   const handleToggleSimulation = () => {
     if (simulation.isRunning) {
@@ -17,6 +17,23 @@ export default function Toolbar() {
   const handleReset = () => {
     stopSimulation()
     clearLogs()
+  }
+  
+  const handleSave = () => {
+    saveProject()
+  }
+  
+  const handleLoad = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'application/json'
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) {
+        loadProject(file)
+      }
+    }
+    input.click()
   }
   
   return (
@@ -32,16 +49,33 @@ export default function Toolbar() {
         <div className="h-6 w-px bg-gray-300" />
         
         <div className="flex items-center space-x-1">
-          <button className="cisco-btn">
+          <button className="cisco-btn" onClick={handleLoad} title="Load Project">
             <FolderOpen className="w-4 h-4" />
           </button>
-          <button className="cisco-btn">
+          <button className="cisco-btn" onClick={handleSave} title="Save Project">
             <Save className="w-4 h-4" />
           </button>
         </div>
       </div>
       
       <div className="flex items-center space-x-3">
+        {/* Connection Mode Button */}
+        <button
+          onClick={() => setConnectionMode({ 
+            active: !connectionMode.active,
+            firstDeviceId: undefined 
+          })}
+          className={`cisco-btn flex items-center space-x-1 ${
+            connectionMode.active ? 'bg-green-100 border-green-500 text-green-700' : ''
+          }`}
+          title="Connection Mode - Click two devices to connect"
+        >
+          <Link className="w-4 h-4" />
+          <span className="text-xs">Connect</span>
+        </button>
+        
+        <div className="h-6 w-px bg-gray-300" />
+        
         <div className="flex items-center space-x-1">
           <button
             onClick={() => setSimulationSpeed(0.5)}
