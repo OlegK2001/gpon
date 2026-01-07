@@ -6,7 +6,7 @@ import { NetworkDevice } from '@/types/network'
 import { getDeviceIcon } from './DeviceIcons'
 import { useNetworkStore } from '@/store/networkStore'
 
-interface DeviceNodeData {
+export interface DeviceNodeData {
   device: NetworkDevice
   isHighlighted?: boolean
   attackMode?: 'source' | 'target' | 'connection-first'

@@ -1,5 +1,8 @@
 import { NetworkDevice, Connection } from '@/types/network'
 
+type ConnectionTreeNode = string[] | { родитель: string | null; дочери: string[] }
+export type ConnectionTree = Record<string, ConnectionTreeNode>
+
 /**
  * Определяет уровень устройства по его типу и порядку появления
  * @param device - устройство
@@ -69,7 +72,7 @@ function canConnect(parentDevice: NetworkDevice, childDevice: NetworkDevice, par
 export function buildConnectionTree(
   devices: NetworkDevice[],
   connections: Connection[]
-): any {
+): ConnectionTree {
   // Находим все OLT устройства
   const oltDevices = devices.filter(d => d.type === 'OLT')
   if (oltDevices.length === 0) return {}
@@ -78,7 +81,7 @@ export function buildConnectionTree(
   const firstOLT = oltDevices[0]
   const firstOLTId = firstOLT.id
   
-  const tree: any = {}
+  const tree: ConnectionTree = {}
   const deviceMap = new Map<string, NetworkDevice>()
   const deviceLevels = new Map<string, number>()
   const visited = new Set<string>()
@@ -189,7 +192,7 @@ export function buildConnectionTree(
  * @returns массив ID устройств в пути или пустой массив, если путь не найден
  */
 export function findPathInTree(
-  tree: Record<string, string[]>,
+  tree: ConnectionTree,
   fromId: string,
   toId: string
 ): string[] {
@@ -215,7 +218,8 @@ export function findPathInTree(
     
     visited.add(current.deviceId)
     
-    const connectedDevices = tree[current.deviceId] || []
+    const node = tree[current.deviceId]
+    const connectedDevices = Array.isArray(node) ? node : node?.дочери || []
     
     for (const deviceId of connectedDevices) {
       if (!visited.has(deviceId)) {
@@ -237,7 +241,7 @@ export function findPathInTree(
  * @returns массив ID достижимых устройств
  */
 export function getReachableDevices(
-  tree: Record<string, string[]>,
+  tree: ConnectionTree,
   deviceId: string
 ): string[] {
   const visited = new Set<string>()
@@ -252,7 +256,8 @@ export function getReachableDevices(
     
     visited.add(current)
     
-    const connectedDevices = tree[current] || []
+    const node = tree[current]
+    const connectedDevices = Array.isArray(node) ? node : node?.дочери || []
     
     for (const connectedId of connectedDevices) {
       if (!visited.has(connectedId)) {

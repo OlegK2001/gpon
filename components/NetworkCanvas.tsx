@@ -6,18 +6,21 @@ import ReactFlow, {
   Edge,
   EdgeChange,
   Connection as ReactFlowConnection,
+  NodeChange,
+  ReactFlowInstance,
+  ConnectionLineType,
   useNodesState,
   useEdgesState,
   Controls,
   Background,
+  BackgroundVariant,
   NodeTypes,
   ReactFlowProvider,
-  useReactFlow,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { useNetworkStore } from '@/store/networkStore'
-import { DeviceType, NetworkDevice, Connection } from '@/types/network'
-import DeviceNode from './nodes/DeviceNode'
+import { DeviceType, NetworkDevice } from '@/types/network'
+import DeviceNode, { DeviceNodeData } from './nodes/DeviceNode'
 import { t } from '@/i18n/ru'
 import { useSimulationLoop } from '@/hooks/useSimulationLoop'
 import PacketAnimationComponent from './PacketAnimation'
@@ -109,11 +112,11 @@ export default function NetworkCanvas() {
   // Запускаем цикл симуляции
   useSimulationLoop()
   
-  const [nodes, setNodes, onNodesChange] = useNodesState([])
+  const [nodes, setNodes, onNodesChange] = useNodesState<DeviceNodeData>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
-  const nodesRef = useRef<Node[]>([]) // Keep track of nodes to preserve positions
-  const lastNodesRef = useRef<Node[]>([]) // Track last nodes state to get current positions
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<DeviceNodeData> | null>(null)
+  const nodesRef = useRef<Node<DeviceNodeData>[]>([]) // Keep track of nodes to preserve positions
+  const lastNodesRef = useRef<Node<DeviceNodeData>[]>([]) // Track last nodes state to get current positions
   
   // Sync devices to nodes - preserve existing node positions
   useEffect(() => {
@@ -130,7 +133,7 @@ export default function NetworkCanvas() {
       }
     })
     
-    const newNodes: Node[] = devices.map(device => {
+    const newNodes: Node<DeviceNodeData>[] = devices.map(device => {
       // Приоритет позиций:
       // 1. Если узел уже существует в ReactFlow - ВСЕГДА используем его текущую позицию
       // 2. Для новых узлов используем device.position из store
@@ -177,15 +180,13 @@ export default function NetworkCanvas() {
         id: device.id,
         type: 'device',
         position: nodePosition,
-        sourcePosition: 'center',
-        targetPosition: 'center',
         width: 120,
         height: 64,
         className,
         data: {
           device,
           isHighlighted,
-          onUpdate: (updates: any) => updateDevice(device.id, updates),
+          onUpdate: (updates: Partial<NetworkDevice>) => updateDevice(device.id, updates),
           onDelete: () => removeDevice(device.id),
         },
       }
@@ -313,7 +314,7 @@ export default function NetworkCanvas() {
     addDevice(newDevice)
   }, [reactFlowInstance, devices, addDevice])
   
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node<DeviceNodeData>) => {
     const { addLog, connectionMode, setConnectionMode, addConnection } = useNetworkStore.getState()
     
     // Handle connection mode clicks
@@ -408,7 +409,7 @@ export default function NetworkCanvas() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={(changes) => {
+          onNodesChange={(changes: NodeChange[]) => {
             // Обрабатываем удаление nodes
             changes.forEach((change) => {
               if (change.type === 'remove') {
@@ -417,14 +418,15 @@ export default function NetworkCanvas() {
             })
             onNodesChange(changes)
             // Update device positions in store when drag ends
-            changes.forEach((change: any) => {
+            changes.forEach((change: NodeChange) => {
               if (change.type === 'position' && change.position) {
+                const position = change.position
                 // Update refs immediately for position preservation
                 nodesRef.current = nodesRef.current.map((n) =>
-                  n.id === change.id ? { ...n, position: change.position } : n
+                  n.id === change.id ? { ...n, position } : n
                 )
                 lastNodesRef.current = lastNodesRef.current.map((n) =>
-                  n.id === change.id ? { ...n, position: change.position } : n
+                  n.id === change.id ? { ...n, position } : n
                 )
                 
                 // Update animation coordinates immediately
@@ -460,16 +462,14 @@ export default function NetworkCanvas() {
           className="bg-gradient-background"
           minZoom={0.5}
           maxZoom={2}
-          connectionLineType="straight"
+          connectionLineType={ConnectionLineType.Straight}
           defaultEdgeOptions={{
             type: 'straight',
             animated: false,
             style: { strokeWidth: 4, stroke: '#3b82f6' },
-            sourceHandle: 'center',
-            targetHandle: 'center',
           }}
         >
-          <Background color="#f5f5f5" variant="dots" gap={16} />
+          <Background color="#f5f5f5" variant={BackgroundVariant.Dots} gap={16} />
           <Controls className="bg-card border border-border" />
           {simulation.isRunning && <PacketAnimationComponent />}
         </ReactFlow>

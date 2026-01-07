@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { NetworkDevice, Connection, Packet, LogEntry, SimulationState, AttackType, ActiveAttack } from '@/types/network'
+import { NetworkDevice, Connection, Packet, LogEntry, SimulationState, AttackType, ActiveAttack, TimerHandle } from '@/types/network'
 import { PacketSimulator } from '@/utils/packetSimulation'
 import { buildNodeGraph, findPath } from '@/utils/pathfinding'
 import { initializeKnownOntIds } from '@/utils/simulationEngine'
@@ -82,7 +82,22 @@ interface NetworkStore {
   
   // Attack Engine
   activeAttacks: Record<AttackType, ActiveAttack>
-  startAttack: (type: AttackType, options?: { targetDeviceId?: string }) => Promise<void>
+  getTargetsToCrack: (targetDeviceId: string) => NetworkDevice[]
+  ensureTapPointForTarget: (targetId: string) => {
+    targetId: string
+    tapSplitterId: string
+    parentId?: string
+    createdSplitterId?: string
+    replacedEdge?: {
+      id: string
+      sourceId: string
+      targetId: string
+      sourcePortId: string
+      targetPortId: string
+      type: 'optical' | 'ethernet'
+    }
+  } | null
+  startAttack: (type: AttackType, options?: { targetDeviceId?: string; targetId?: string }) => Promise<void>
   stopAttack: (type: AttackType) => void
   executeAttack: (type: AttackType, attackerId: string, splitter: NetworkDevice, olt: NetworkDevice | undefined, targetDeviceId?: string) => Promise<void>
 }
@@ -1405,7 +1420,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
             destination: olt.id, // Всегда OLT как конечная цель
             current: rogueOntId,
             direction: 'UPSTREAM',
-            targetOntId: useWrongId ? wrongOnuId : (rogueOnt.config.gponConfig?.onuId || null),
+            targetOntId: useWrongId ? String(wrongOnuId) : (rogueOnt.config.gponConfig?.onuId !== undefined ? String(rogueOnt.config.gponConfig.onuId) : null),
             payloadType: 'ATTACK',
             data: {
               sourceIp: '0.0.0.0',
@@ -2926,7 +2941,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
     if (!attackerDevice) return
     
     const attack = state.activeAttacks[type]
-    const timers: number[] = []
+    const timers: TimerHandle[] = []
     
     switch (type) {
       case 'EAVESDROP':
@@ -3053,7 +3068,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
           }
         }, 2000) // Каждые 2 секунды попытка
         
-        timers.push(bruteTimer as any)
+        timers.push(bruteTimer)
         
         // Перехват downstream пакетов (ТОЛЬКО downstream, НЕТ upstream)
         const eavesdropInterval = setInterval(() => {
@@ -3118,7 +3133,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
           })
         }, 7200 + Math.random() * 3600) // 7200-10800ms
         
-        timers.push(eavesdropInterval as any)
+        timers.push(eavesdropInterval)
         break
         
       case 'BRUTEFORCE_ID': {
@@ -3189,7 +3204,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
           })
         }, 6000) // Увеличено в 3 раза: было 2000ms
         
-        timers.push(bruteforceInterval as any)
+        timers.push(bruteforceInterval)
         break
       }
         
@@ -3417,10 +3432,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
           
           // Обновляем статус SubstituteONT
           get().updateDevice(substituteOnt.id, {
-            config: {
-              ...substituteOnt.config,
-              status: 'ACTIVE_ATTACK',
-            },
+            statusLevel: 3,
           })
           
           get().addLog({
@@ -3584,7 +3596,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
                 }, 400 + Math.random() * 300) // Задержка 400-700ms
               }, 3600 + Math.random() * 1800) // Интервал 3600-5400ms
               
-              timers.push(attackTrafficInterval as any)
+              timers.push(attackTrafficInterval)
               
               // Сохраняем таймер в состоянии атаки
               set((state) => ({
@@ -3592,7 +3604,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
                   ...state.activeAttacks,
                   [type]: {
                     ...state.activeAttacks[type],
-                    timers: [...state.activeAttacks[type].timers, attackTrafficInterval as any],
+                    timers: [...state.activeAttacks[type].timers, attackTrafficInterval],
                   },
                 },
               }))
@@ -3743,7 +3755,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
           }
         }, 250) // Попытка каждые 250мс (четверть секунды)
         
-        timers.push(bruteforceInterval as any)
+        timers.push(bruteforceInterval)
         break
       }
         
@@ -3847,7 +3859,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
           }
         }, 100) // 10 пакетов в секунду (100ms * 2 пакета)
         
-        timers.push(ddosInterval as any)
+        timers.push(ddosInterval)
         break
     }
     

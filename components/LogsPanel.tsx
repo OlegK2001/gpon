@@ -50,9 +50,9 @@ export function LogsPanel() {
                   <div className="text-xs text-cyan-400 mb-1">[{log.deviceId}]</div>
                 )}
                 <div className="text-sm font-medium mb-1">{log.message}</div>
-                {log.details && (
+                {log.details !== undefined && log.details !== null && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    {typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}
+                    {typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details)}
                   </div>
                 )}
               </div>

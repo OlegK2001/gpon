@@ -1,5 +1,7 @@
 // Network Device Types
-export type DeviceType = 'OLT' | 'ONU' | 'ONT' | 'SPLITTER' | 'ROUTER' | 'SWITCH' | 'PC' | 'SERVER'
+export type DeviceType = 'OLT' | 'ONU' | 'ONT' | 'SPLITTER' | 'ROUTER' | 'SWITCH' | 'PC' | 'SERVER' | 'ATTACKER'
+
+export type TimerHandle = ReturnType<typeof setTimeout>
 
 export interface Position {
   x: number
@@ -47,7 +49,8 @@ export interface DeviceConfig {
   gponConfig?: GponConfig
   attackMode?: 'eavesdrop' | 'bruteforce' | 'ddos' // Режим атаки для несанкционированных устройств
   isAttackDevice?: boolean // Флаг атакующего устройства
-  attackKind?: AttackType // Тип атаки для атакующего устройства
+  attackKind?: AttackType | 'ONT_SPOOF_SUBSTITUTE' // Тип атаки для атакующего устройства (включая вспомогательные роли)
+  compromised?: boolean // Пометка, что устройство скомпрометировано
   // ID код для отображения в кружочке (например "7" или "42")
   idCode?: string
   // Флаг, что ID был подобран (для чёрного текста)
@@ -108,7 +111,7 @@ export type AttackType = 'EAVESDROP' | 'BRUTEFORCE_ID' | 'UNAUTHORIZED_ONT' | 'O
 export interface ActiveAttack {
   isActive: boolean
   attackerDeviceId?: string
-  timers: number[] // NodeJS.Timeout IDs
+  timers: TimerHandle[]
   packetIds: string[]
   targetDeviceId?: string // для spoof
   // Для ONT_SPOOF: информация для восстановления
@@ -182,6 +185,9 @@ export interface PacketData {
   // Packet metadata (без анимации)
   packetColor?: 'yellow' | 'blue' | 'red' | 'orange'
   direction?: 'downstream' | 'upstream'
+
+  // Attack metadata (UI/debug)
+  attackSubType?: string
 }
 
 // OSI Layer representation
@@ -214,6 +220,6 @@ export interface LogEntry {
   level: 'info' | 'warning' | 'error' | 'critical'
   deviceId?: string
   message: string
-  details?: any
+  details?: unknown
 }
 

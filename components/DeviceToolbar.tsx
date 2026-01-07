@@ -1,12 +1,12 @@
 'use client'
 
-import { Server, Wifi, Radio, Router, Network, Split } from 'lucide-react'
+import { Server, Wifi, Radio, Router, Split, LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNetworkStore } from '@/store/networkStore'
 import { DeviceType } from '@/types/network'
 import { t } from '@/i18n/ru'
 
-const deviceTypes: { type: DeviceType; icon: any; label: string }[] = [
+const deviceTypes: { type: DeviceType; icon: LucideIcon; label: string }[] = [
   { type: 'OLT', icon: Server, label: 'OLT' },
   { type: 'ONU', icon: Wifi, label: 'ONU' },
   { type: 'ONT', icon: Wifi, label: 'ONT' },

@@ -1,4 +1,4 @@
-import { Packet, NetworkDevice, Connection, PacketDirection, PayloadType, SimulationState } from '@/types/network'
+import { Packet, NetworkDevice, Connection, PacketDirection, PayloadType, SimulationState, AttackType, ActiveAttack } from '@/types/network'
 import { buildNodeGraph, findPath } from '@/utils/pathfinding'
 
 /**
@@ -180,6 +180,7 @@ export function processMainOLT(
   simulationState?: SimulationState
 ): PacketProcessingResult {
   const outgoingPackets: Packet[] = []
+  const flowDirection = simulationState?.flowDirection
   
   // Генерация downstream теперь делается через scheduler в useSimulationLoop
   // OLT только обрабатывает входящие пакеты
@@ -291,7 +292,7 @@ export function processSplitter(
   incomingPackets: Packet[],
   connections: Connection[],
   devices: NetworkDevice[],
-  activeAttacks?: Record<string, { isActive: boolean; congestionNodeId?: string }>
+  activeAttacks?: Record<AttackType, ActiveAttack>
 ): PacketProcessingResult {
   const outgoingPackets: Packet[] = []
   
@@ -561,7 +562,8 @@ export function processDevicePackets(
   connections: Connection[],
   devices: NetworkDevice[],
   tick: number,
-  simulationState?: SimulationState
+  simulationState?: SimulationState,
+  activeAttacks?: Record<AttackType, ActiveAttack>
 ): PacketProcessingResult {
   // Определяем, является ли это главным OLT (номер 1)
   const isMainOLT = device.type === 'OLT' && 
@@ -578,7 +580,7 @@ export function processDevicePackets(
   } else if (isIntermediateOLT) {
     return processIntermediateOLT(device, incomingPackets, connections, devices)
   } else if (device.type === 'SPLITTER') {
-    return processSplitter(device, incomingPackets, connections, devices)
+    return processSplitter(device, incomingPackets, connections, devices, activeAttacks)
   } else if (device.type === 'ONU' || device.type === 'ONT') {
     return processONUONT(device, incomingPackets, connections, devices, simulationState)
   } else if (device.type === 'ROUTER') {

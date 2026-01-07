@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { useNetworkStore } from '@/store/networkStore'
+import { Packet, TimerHandle } from '@/types/network'
 import { processDevicePackets, normalizePath } from '@/utils/packetProcessing'
 import { initializeKnownOntIds } from '@/utils/simulationEngine'
 import { getSegmentDurationMs, getPathTravelMs } from '@/constants/packetAnimation'
 import { buildNodeGraph, findPath } from '@/utils/pathfinding'
 
 interface InTransitPacket {
-  packet: any
+  packet: Packet
   toDeviceId: string
   deliverAt: number
 }
@@ -26,13 +27,13 @@ export function useSimulationLoop() {
   } = useNetworkStore()
 
   const tickRef = useRef(0)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const packetBuffersRef = useRef<Map<string, any[]>>(new Map())
-  const upstreamTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const intervalRef = useRef<TimerHandle | null>(null)
+  const packetBuffersRef = useRef<Map<string, Packet[]>>(new Map())
+  const upstreamTimerRef = useRef<TimerHandle | null>(null)
   const inTransitRef = useRef<InTransitPacket[]>([])
-  const packetRemovalTimersRef = useRef<Map<string, number>>(new Map())
-  const downstreamSchedulerRef = useRef<NodeJS.Timeout | null>(null)
-  const upstreamSchedulerRef = useRef<NodeJS.Timeout | null>(null)
+  const packetRemovalTimersRef = useRef<Map<string, TimerHandle>>(new Map())
+  const downstreamSchedulerRef = useRef<TimerHandle | null>(null)
+  const upstreamSchedulerRef = useRef<TimerHandle | null>(null)
   const lastDownstreamGenRef = useRef<number>(0)
   const lastUpstreamGenRef = useRef<Map<string, number>>(new Map()) // Для каждого PC/SERVER отдельно
 
@@ -152,7 +153,7 @@ export function useSimulationLoop() {
       inTransitRef.current = inTransitRef.current.filter(item => !delivered.includes(item))
 
       // Шаг 1: Для всех устройств формируем список входящих пакетов
-      const deviceIncomingPackets = new Map<string, any[]>()
+      const deviceIncomingPackets = new Map<string, Packet[]>()
       
       currentDevices.forEach(device => {
         const buffer = packetBuffersRef.current.get(device.id) || []
@@ -262,7 +263,7 @@ export function useSimulationLoop() {
                   if (process.env.NODE_ENV === 'development') {
                     console.debug(`[PacketTTL] Packet ${packet.id} removed after TTL`)
                   }
-                }, ttlMs) as any
+                }, ttlMs)
                 
                 packetRemovalTimersRef.current.set(packet.id, timerId)
               }
@@ -364,7 +365,7 @@ export function useSimulationLoop() {
           const pathIds = normalizePath(path.map(node => node.id))
           const nextDeviceId = pathIds.length > 1 ? pathIds[1] : pathIds[pathIds.length - 1]
           
-          const broadcastPacket = {
+          const broadcastPacket: Packet = {
             id: `packet-downstream-${Date.now()}-${Math.random()}-${endDevice.id}`,
             type: 'gpon' as const,
             source: mainOLT.id,
@@ -398,7 +399,7 @@ export function useSimulationLoop() {
             const timerId = setTimeout(() => {
               currentState.removePacket(broadcastPacket.id)
               packetRemovalTimersRef.current.delete(broadcastPacket.id)
-            }, ttlMs) as any
+            }, ttlMs)
             packetRemovalTimersRef.current.set(broadcastPacket.id, timerId)
           }
         }
@@ -413,7 +414,7 @@ export function useSimulationLoop() {
     downstreamSchedulerRef.current = setInterval(() => {
       generateDownstream()
       lastDownstreamGenRef.current = Date.now()
-    }, 4500 + Math.random() * 1500) as any
+    }, 4500 + Math.random() * 1500)
 
     return () => {
       if (downstreamSchedulerRef.current) {
@@ -468,7 +469,7 @@ export function useSimulationLoop() {
           const pathIds = normalizePath(path.map(node => node.id))
           const nextDeviceId = pathIds.length > 1 ? pathIds[1] : pathIds[pathIds.length - 1]
           
-          const responsePacket = {
+          const responsePacket: Packet = {
             id: `packet-upstream-${Date.now()}-${Math.random()}-${device.id}`,
             type: 'ip' as const,
             source: device.id,
@@ -498,7 +499,7 @@ export function useSimulationLoop() {
             const timerId = setTimeout(() => {
               currentState.removePacket(responsePacket.id)
               packetRemovalTimersRef.current.delete(responsePacket.id)
-            }, ttlMs) as any
+            }, ttlMs)
             packetRemovalTimersRef.current.set(responsePacket.id, timerId)
           }
         }
@@ -508,7 +509,7 @@ export function useSimulationLoop() {
     // Генерируем каждые 5400-7500ms с jitter (увеличено в 3 раза: было 1800-2500ms)
     upstreamSchedulerRef.current = setInterval(() => {
       generateUpstream()
-    }, 5400 + Math.random() * 2100) as any
+    }, 5400 + Math.random() * 2100)
 
     return () => {
       if (upstreamSchedulerRef.current) {

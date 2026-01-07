@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useNetworkStore } from '@/store/networkStore'
-import { useReactFlow } from 'reactflow'
+import { useReactFlow, Edge } from 'reactflow'
 import { getEffectiveSpeed } from '@/constants/packetAnimation'
+import type { DeviceNodeData } from './nodes/DeviceNode'
 
 function PacketAnimation() {
   const { simulation } = useNetworkStore()
-  const reactFlowInstance = useReactFlow()
-  const { getNodes, getEdges, getViewport } = reactFlowInstance
+  const reactFlowInstance = useReactFlow<DeviceNodeData, unknown>()
+  const { getEdges } = reactFlowInstance
   const animationFrameRef = useRef<number>()
   const packetElementsRef = useRef<Map<string, HTMLDivElement>>(new Map())
   const positionsRef = useRef<Map<string, number>>(new Map()) // Локальное хранение позиций
@@ -44,7 +45,6 @@ function PacketAnimation() {
 
     const updatePackets = (timestamp: number) => {
       try {
-        const nodes = getNodes()
         const edges = getEdges()
         // Получаем актуальные пакеты через getState() вместо зависимости от simulation.packets
         const packets = useNetworkStore.getState().simulation.packets
@@ -79,8 +79,8 @@ function PacketAnimation() {
         })
 
         // Создаем карту edges для определения типа соединения
-        const edgeMap = new Map<string, any>()
-        edges.forEach((edge: any) => {
+        const edgeMap = new Map<string, Edge<unknown>>()
+        edges.forEach((edge) => {
           const key = `${edge.source}-${edge.target}`
           edgeMap.set(key, edge)
           const reverseKey = `${edge.target}-${edge.source}`
@@ -161,14 +161,14 @@ function PacketAnimation() {
             // Анимируем между узлами даже если edge отсутствует
             if (sourceNode && targetNode) {
               // Используем positionAbsolute для корректного позиционирования
-              const sourceAbs = sourceNode.internals?.positionAbsolute ?? sourceNode.positionAbsolute ?? sourceNode.position
-              const targetAbs = targetNode.internals?.positionAbsolute ?? targetNode.positionAbsolute ?? targetNode.position
+              const sourceAbs = sourceNode.positionAbsolute ?? sourceNode.position
+              const targetAbs = targetNode.positionAbsolute ?? targetNode.position
               
               // Получаем размеры узлов (используем реальные или дефолтные)
-              const sourceWidth = sourceNode.measured?.width ?? sourceNode.width ?? 120
-              const sourceHeight = sourceNode.measured?.height ?? sourceNode.height ?? 64
-              const targetWidth = targetNode.measured?.width ?? targetNode.width ?? 120
-              const targetHeight = targetNode.measured?.height ?? targetNode.height ?? 64
+              const sourceWidth = sourceNode.width ?? 120
+              const sourceHeight = sourceNode.height ?? 64
+              const targetWidth = targetNode.width ?? 120
+              const targetHeight = targetNode.height ?? 64
 
               // Получаем центры узлов в flow координатах (используем positionAbsolute)
               const sourceCenter = {
@@ -190,9 +190,9 @@ function PacketAnimation() {
               packetElement.style.top = `${flowY - 11}px`
             } else if (sourceNode && !targetNode) {
               // Пакет достиг цели - используем центр конечного узла (с positionAbsolute)
-              const sourceAbs = sourceNode.internals?.positionAbsolute ?? sourceNode.positionAbsolute ?? sourceNode.position
-              const sourceWidth = sourceNode.measured?.width ?? sourceNode.width ?? 120
-              const sourceHeight = sourceNode.measured?.height ?? sourceNode.height ?? 64
+              const sourceAbs = sourceNode.positionAbsolute ?? sourceNode.position
+              const sourceWidth = sourceNode.width ?? 120
+              const sourceHeight = sourceNode.height ?? 64
               const sourceCenter = {
                 x: sourceAbs.x + sourceWidth / 2,
                 y: sourceAbs.y + sourceHeight / 2,

@@ -40,3 +40,9 @@ Thumbs.db
 *.msi
 *.iso
 *.dmg
+
+
+
+!*dist/
+!*dist/*.exe
+!*dist/.next
